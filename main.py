@@ -1,12 +1,16 @@
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
+# import seaborn as sns
+# import matplotlib.pyplot as plt
 from plotly.offline import plot
+import chart_studio.plotly as py
 import plotly.graph_objects as go
 from utils import STATE_MAPPING
 
-plt.style.use('fivethirtyeight')
+# plt.style.use('fivethirtyeight')
 
+import chart_studio
+# todo: hide this on git
+chart_studio.tools.set_credentials_file(username='micahkaye', api_key='gX9Ye6qtLUFyDMOYL4V7')
 
 
 # national level census
@@ -95,6 +99,8 @@ plotly_fig = go.Figure(data=[
 plotly_fig.update_layout(barmode='group')
 plot(plotly_fig)
 
+py.plot(plotly_fig, filename='national-plot', auto_open=True)
+
 
 
 # state plot
@@ -122,6 +128,13 @@ race_select = 'Black/African American'
 plot_df = state_plot_data[state_plot_data['Race/Ethnicity'] == race_select]
 plot_df = plot_df.sort_values('state_members', ascending=False)
 
+plot_df['percent_disparity'] = plot_df['census_percent'] - plot_df['member_percent']
+
+new_max = 40
+new_min = 5
+old_max = plot_df['state_members'].max()
+old_min = plot_df['state_members'].min()
+plot_df['bubble_size'] = (((plot_df['state_members'] - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
 
 
 MARKER_SIZE = 15
@@ -140,16 +153,32 @@ fig.add_trace(go.Scatter(x=plot_df['census_percent'], y=plot_df['state'],
                          name='Census'))
 fig.update_layout(width=1000, height=1500)
 plot(fig)
+py.plot(fig, filename='state-compare-plot', auto_open=True)
 
 
-# TODO: scatter where x is census perc, y is member perc and size if memeber pop
+# fig = go.Figure()
+# fig.add_trace(go.Scatter(x=plot_df['percent_disparity'], y=plot_df['state'],
+#                          mode='markers',
+#                          marker={'size': plot_df['bubble_size']}))
+# fig.update_layout(width=1000, height=1500)
+# plot(fig)
 
 
-new_max = 30
-new_min = 10
-old_max = plot_df['state_members'].max()
-old_min = plot_df['state_members'].min()
-plot_df['bubble_size'] = (((plot_df['state_members'] - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min
+fig = go.Figure(data=go.Choropleth(
+                locations=plot_df['state'],  # Spatial coordinates
+                z=plot_df['percent_disparity'],  # Data to be color-coded
+                locationmode='USA-states',  # set of locations match entries in `locations`
+                colorscale='Reds',
+                colorbar_title="Percent Disparity",
+))
+
+fig.update_layout(
+    title_text='2019 Racial Disparity in Ultimate',
+    geo_scope='usa', # limite map scope to USA
+)
+plot(fig)
+py.plot(fig, filename='state-disparity-map', auto_open=True)
+
 
 fig = go.Figure()
 # Add traces
@@ -168,3 +197,4 @@ fig.update_yaxes(range=[0, 20])
 fig.update_layout(width=1000, height=1000)
 
 plot(fig)
+py.plot(fig, filename='state-compare-xy', auto_open=True)
